@@ -1,0 +1,96 @@
+﻿/*
+	Add your SAP Business ByDesign scripting language implementation for:
+		Enhancement Option: RecipientSystemDeterminationbyBuinessObject
+		Operation: DETERMINE
+
+		Script file signature
+		----------------------------
+		Parameter: InputData of type ReceiverDeterminationBusinessObjectInstance
+		Returns: ReceiverDeterminationBusinessSystem
+
+	Note: 
+	  - To use code completion, press CTRL+J.
+*/
+import AP.Common.Global;
+import AP.Common.GDT;
+import DocumentServices.Global;
+import AP.FO.BusinessPartner.Global;
+import AP.CRM.Global;
+import ABSL;
+
+var result : ReceiverDeterminationBusinessSystem;
+var customerquote;
+var company;
+if (InputData.ObjectTypeCode.content == "441")
+{
+	var query = Customer.QueryByIdentification;
+	var resultData;
+	// 2. Selection
+	var selectionParams = query.CreateSelectionParams();
+	selectionParams.Add(query.UUID.content, "I", "EQ", InputData.UUID.content);
+	//// Result
+	resultData = query.Execute(selectionParams).GetFirst();
+	if (resultData.IsSet())
+	{
+		var cc = resultData.SalesArrangement.GetFirst();
+		if (cc.IsSet())
+		{
+			var so = cc.SalesOrganisation_V1;
+			if (so.IsSet())
+			{
+				company = so.ID.RemoveLeadingZeros();
+			}
+		}
+	}
+
+}
+
+if (InputData.ObjectTypeCode.content == "2059")
+{
+	var cq = CustomerQuote.Retrieve(InputData.UUID);
+	if (cq.IsSet())
+	{
+		var ssa = cq.SalesAndServiceBusinessArea;
+		if (ssa.IsSet())
+		{
+			company = ssa.SalesOrganisationID.RemoveLeadingZeros();
+		}
+	}
+	
+}
+
+var query = CommunicationSystem.ParticipatingBusinessSystem.QueryByElements;
+var resultData;
+var selectionParams = query.CreateSelectionParams();
+resultData = query.ExecuteDataOnly(selectionParams);
+var id;
+
+foreach (var res in resultData)
+{
+	if (Library::Context.GetSystemURL().Contains("my317048.crm.ondemand.com"))
+	{
+		if (company == "KS01" && res.BusinessSystemID == "PINCLNT400")
+		{
+			id = res.UUID;
+			break;
+		}
+		else if (company == "SM01" && res.BusinessSystemID == "YEPCLNT400")
+		{
+			id = res.UUID;
+			break;
+		}
+	}
+	else if (Context.GetSystemURL().Contains("my312642.crm.ondemand.com"))
+	{
+		if (res.BusinessSystemID == "DINCLNT200")
+		{
+			id = res.UUID;
+		}
+	}
+}
+
+
+result.BusinessSystemUUID = id.content;
+
+
+return result;
